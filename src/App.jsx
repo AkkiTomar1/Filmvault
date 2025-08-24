@@ -13,7 +13,7 @@ function App() {
     <>
       <BrowserRouter>
 
-        <Navbar />
+        <Navbar/>
         <Routes>
           <Route path='/' element={<> <Banner /> <Movies/> </>} />
 
