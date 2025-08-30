@@ -7,7 +7,7 @@ import Pagination from './Pagination'
 
 const Movies = () => {
    const [movies , setMovies]=useState([ ])
-   const [pageNo,setpageNo]=useState(1)
+   const [pageNo, setpageNo]=useState(1)
 
    const handleprev=()=>{
     if(pageNo==1){
@@ -43,6 +43,7 @@ const Movies = () => {
       </div>
       <Pagination pageNo={pageNo} handlePrev={handleprev} handleNext={handleNext}/>
     </div>
+    
   )
 }
 
