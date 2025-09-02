@@ -40,7 +40,7 @@ const Watchlist = ({ watchlist, handleRemoveFromWatchList }) => {
                   <td className='flex items-center px-6 py-4'>
                     <img
                       className='h-[7.5rem] w-[12rem]'
-                      src={`https://image.tmdb.org/t/p/original/${movieObj.poster_path}`}
+                      src={`https://image.tmdb.org/t/p/original/${movieObj.backdrop_path}`}
                       alt={movieObj.title}
                     />
                     <div className='mx-12'>{movieObj.title}</div>
