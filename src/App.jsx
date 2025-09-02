@@ -5,7 +5,7 @@ import Movies from './components/Movies.jsx'
 import Navbar from './components/Navbar.jsx'
 import Watchlist from './components/Watchlist.jsx'
 import Footer from './components/Footer.jsx'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 function App() {
   let [watchlist, setWatchlist] = useState([])
@@ -31,6 +31,9 @@ function App() {
       <HashRouter>
         <Navbar />
         <Routes>
+          {/* Default route will redirect to Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+
           {/* Home Route */}
           <Route
             path="/"
