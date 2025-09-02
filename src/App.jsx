@@ -7,48 +7,58 @@ import Watchlist from './components/Watchlist.jsx'
 import Footer from './components/Footer.jsx'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 
-
 function App() {
-
   let [watchlist, setWatchlist] = useState([])
+
+  // Add to watchlist
   let handleAddtoWatchList = (movieObj) => {
     let newWatchlist = [...watchlist, movieObj]
     setWatchlist(newWatchlist)
-
-    console.log(newWatchlist);
-
+    console.log(newWatchlist)
   }
 
-  let handleRemoveFromWatchList=(movieObj)=>{
-    let filteredWatchList=watchlist.filter((movie)=>{
-      return movie.id!=movieObj.id;
+  // Remove from watchlist
+  let handleRemoveFromWatchList = (movieObj) => {
+    let filteredWatchList = watchlist.filter((movie) => {
+      return movie.id !== movieObj.id
     })
-    setWatchlist(filteredWatchList);
-    console.log(filteredWatchList);
-    
+    setWatchlist(filteredWatchList)
+    console.log(filteredWatchList)
   }
-  
 
   return (
     <>
       <HashRouter>
-
         <Navbar />
         <Routes>
-          <Route path='/' element={<> <Banner /> 
-          <Movies
-          watchlist={watchlist}
-          handleAddtoWatchList={handleAddtoWatchList}
-          handleRemoveFromWatchList={handleRemoveFromWatchList} />
-           </>} />
+          {/* Home Route */}
+          <Route
+            path="/"
+            element={
+              <>
+                <Banner />
+                <Movies
+                  watchlist={watchlist}
+                  handleAddtoWatchList={handleAddtoWatchList}
+                  handleRemoveFromWatchList={handleRemoveFromWatchList}
+                />
+              </>
+            }
+          />
 
-          <Route path='/Watchlist' element={<Watchlist watchlist={watchlist} handleRemoveFromWatchList={handleRemoveFromWatchList}/>} />
-
-
+          {/* Watchlist Route */}
+          <Route
+            path="/watchlist"
+            element={
+              <Watchlist
+                watchlist={watchlist}
+                handleRemoveFromWatchList={handleRemoveFromWatchList}
+              />
+            }
+          />
         </Routes>
         <Footer />
       </HashRouter>
-   
     </>
   )
 }
