@@ -5,7 +5,7 @@ import Movies from './components/Movies.jsx'
 import Navbar from './components/Navbar.jsx'
 import Watchlist from './components/Watchlist.jsx'
 import Footer from './components/Footer.jsx'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route } from 'react-router-dom'
 
 
 function App() {
@@ -31,7 +31,7 @@ function App() {
 
   return (
     <>
-      <BrowserRouter>
+      <HashRouter>
 
         <Navbar />
         <Routes>
@@ -47,7 +47,7 @@ function App() {
 
         </Routes>
         <Footer />
-      </BrowserRouter>
+      </HashRouter>
    
     </>
   )
