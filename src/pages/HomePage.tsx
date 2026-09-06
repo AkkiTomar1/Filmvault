@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Banner from '../components/Banner'
-import MovieCard from '../components/MovieCard'
+import MovieGrid from '../components/MovieGrid'
 import Pagination from '../components/Pagination'
 import LoadingSkeleton from '../components/LoadingSkeleton'
 import ErrorState from '../components/ErrorState'
@@ -58,16 +58,7 @@ export default function HomePage() {
           <ErrorState message="Couldn't load movies." onRetry={() => setReloadKey((key) => key + 1)} />
         ) : (
           <>
-            <div className="flex flex-row flex-wrap justify-around gap-4">
-              {movies.map((movie) => (
-                <MovieCard
-                  key={movie.id}
-                  movie={movie}
-                  isInWatchlist={isInWatchlist(movie.id)}
-                  onToggle={() => toggle(movie)}
-                />
-              ))}
-            </div>
+            <MovieGrid movies={movies} isInWatchlist={isInWatchlist} onToggle={toggle} />
             <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
           </>
         )}

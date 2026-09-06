@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from 'react-router-dom'
 import { Link, useLoaderData } from 'react-router-dom'
 import { FaHeart, FaRegHeart, FaPlay, FaStar } from 'react-icons/fa6'
-import MovieCard from '../components/MovieCard'
+import MovieGrid from '../components/MovieGrid'
 import { getMovieCredits, getMovieDetails, getMovieVideos, getSimilarMovies } from '../api/tmdb'
 import type { CastMember, Movie, MovieDetails, Video } from '../types/tmdb'
 import { imageUrl, releaseYear, formatRating } from '../lib/images'
@@ -185,16 +185,11 @@ export default function MovieDetailsPage() {
         {similar.length > 0 && (
           <section className="mt-8">
             <h3 className="mb-3 text-xl font-bold">Similar Movies</h3>
-            <div className="flex flex-row flex-wrap justify-around gap-4">
-              {similar.slice(0, 6).map((movie) => (
-                <MovieCard
-                  key={movie.id}
-                  movie={movie}
-                  isInWatchlist={isInWatchlist(movie.id)}
-                  onToggle={() => toggle(movie)}
-                />
-              ))}
-            </div>
+            <MovieGrid
+              movies={similar.slice(0, 6)}
+              isInWatchlist={isInWatchlist}
+              onToggle={toggle}
+            />
           </section>
         )}
       </div>

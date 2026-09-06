@@ -1,12 +1,11 @@
-export default function LoadingSkeleton({ count = 8 }: { count?: number }) {
+export default function LoadingSkeleton({ count = 20 }: { count?: number }) {
   return (
-    <div className="flex flex-row flex-wrap justify-around gap-4 p-3" data-testid="loading-skeleton">
+    <div
+      className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6"
+      data-testid="loading-skeleton"
+    >
       {Array.from({ length: count }).map((_, index) => (
-        <div
-          key={index}
-          className="h-[42vh] w-[160px] animate-pulse rounded-xl bg-gray-300 sm:h-[48vh] sm:w-[189px]"
-          aria-hidden="true"
-        />
+        <div key={index} className="aspect-[2/3] w-full animate-pulse rounded-xl bg-gray-300" aria-hidden="true" />
       ))}
     </div>
   )

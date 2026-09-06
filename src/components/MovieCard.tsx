@@ -17,7 +17,7 @@ export default function MovieCard({ movie, isInWatchlist, onToggle }: MovieCardP
   const poster = imgError ? FallbackPoster : (imageUrl(movie.poster_path, 'w300') ?? FallbackPoster)
 
   return (
-    <div className="group relative w-[160px] sm:w-[189px]">
+    <div className="group relative w-full">
       <Link
         to={`/movie/${movie.id}`}
         className="block overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -27,7 +27,7 @@ export default function MovieCard({ movie, isInWatchlist, onToggle }: MovieCardP
           onError={() => setImgError(true)}
           alt={movie.title}
           loading="lazy"
-          className="h-[42vh] w-full bg-gray-800 object-cover transition-transform duration-200 group-hover:scale-105 sm:h-[48vh]"
+          className="aspect-[2/3] w-full bg-gray-800 object-cover transition-transform duration-200 group-hover:scale-105"
         />
 
         <div className="absolute bottom-0 w-full rounded-b-xl bg-gray-900/70 px-2 py-1.5 text-center text-sm font-medium text-white">
