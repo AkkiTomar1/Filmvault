@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { FaHeart, FaMagnifyingGlass, FaChevronDown, FaFilm } from 'react-icons/fa6'
+import { FaMagnifyingGlass, FaChevronDown, FaFilm, FaClapperboard, FaDice } from 'react-icons/fa6'
 import Logo from '../assets/Na.jpg'
 import { useWatchlistContext } from '../context/WatchlistContext'
-import { getGenres, searchMovies } from '../api/tmdb'
+import { getGenres, searchMovies, getRandomMovie } from '../api/tmdb'
 import type { Genre, Movie } from '../types/tmdb'
 import { imageUrl, releaseYear } from '../lib/images'
 
@@ -33,6 +33,7 @@ export default function Navbar() {
 
   const searchBoxRef = useRef<HTMLDivElement>(null)
   const genreBoxRef = useRef<HTMLDivElement>(null)
+  const [picking, setPicking] = useState(false)
 
   useEffect(() => {
     setIsSearchOpen(false)
@@ -108,6 +109,17 @@ export default function Navbar() {
     setIsGenreOpen(false)
   }
 
+  const surpriseMe = async () => {
+    if (picking) return
+    setPicking(true)
+    try {
+      const movie = await getRandomMovie()
+      navigate(`/movie/${movie.id}`)
+    } catch {
+      setPicking(false)
+    }
+  }
+
   const toggleGenreOpen = () => {
     setIsSearchOpen(false)
     setIsGenreOpen((open) => !open)
@@ -139,7 +151,6 @@ export default function Navbar() {
 
           <NavLink to="/watchlist" className={navLinkClass} data-testid="watchlist-link">
             <span className="flex items-center gap-1.5">
-              <FaHeart className="text-red-500" aria-hidden="true" />
               Watchlist
               <span
                 className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1 text-xs font-extrabold text-white ring-1 ring-white/30"
@@ -147,6 +158,13 @@ export default function Navbar() {
               >
                 {watchlist.length}
               </span>
+            </span>
+          </NavLink>
+
+          <NavLink to="/movie-night" className={navLinkClass}>
+            <span className="flex items-center gap-1.5">
+              <FaClapperboard className="text-blue-400" aria-hidden="true" />
+              Movie Night
             </span>
           </NavLink>
 
@@ -193,6 +211,21 @@ export default function Navbar() {
             )}
           </div>
         </div>
+
+        {/* Surprise Me */}
+        <button
+          type="button"
+          onClick={surpriseMe}
+          disabled={picking}
+          aria-label="Surprise me with a random movie"
+          className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-sm font-bold text-gray-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-blue-400"
+        >
+          <FaDice
+            className={picking ? 'animate-spin text-blue-400' : 'text-blue-400'}
+            aria-hidden="true"
+          />
+          <span className="hidden md:block">{picking ? 'Rolling…' : 'Surprise Me'}</span>
+        </button>
 
         {/* Search */}
         <div ref={searchBoxRef} className="relative ml-auto w-full sm:w-80">

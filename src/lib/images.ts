@@ -2,7 +2,7 @@ const IMAGE_BASE = 'https://image.tmdb.org/t/p/'
 
 export function imageUrl(
   path: string | null | undefined,
-  size: 'w300' | 'w500' | 'w780' | 'w1280' | 'original' = 'w500',
+  size: 'w45' | 'w92' | 'w300' | 'w500' | 'w780' | 'w1280' | 'original' = 'w500',
 ): string | undefined {
   return path ? `${IMAGE_BASE}${size}${path}` : undefined
 }

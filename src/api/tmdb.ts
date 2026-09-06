@@ -2,10 +2,13 @@ import axios from 'axios'
 import type {
   ApiResponse,
   Credits,
+  DiscoverParams,
   Genre,
   Movie,
   MovieDetails,
+  ProviderOffer,
   Videos,
+  WatchProvidersResponse,
 } from '../types/tmdb'
 
 const API_KEY: string | undefined = import.meta.env.VITE_TMDB_API_KEY
@@ -90,6 +93,54 @@ export function getTrending(page = 1, signal?: AbortSignal) {
       signal,
     })
     .then((res) => res.data)
+}
+
+export function getWatchProviders(
+  movieId: number,
+  region: string,
+  signal?: AbortSignal,
+): Promise<ProviderOffer | null> {
+  return client
+    .get<WatchProvidersResponse>(`/movie/${movieId}/watch/providers`, { signal })
+    .then((res) => res.data.results?.[region] ?? null)
+}
+
+export function getDiscoverMovies(params: DiscoverParams, signal?: AbortSignal) {
+  const query: Record<string, string | number | boolean> = {
+    sort_by: 'vote_count.desc',
+    include_adult: false,
+  }
+  if (params.genres && params.genres.length > 0) {
+    query.with_genres = params.genres.join(',')
+  }
+  if (params.releaseFrom) query['primary_release_date.gte'] = params.releaseFrom
+  if (params.releaseTo) query['primary_release_date.lte'] = params.releaseTo
+  if (params.maxRuntime) query['with_runtime.lte'] = params.maxRuntime
+  if (params.minVotes) query['vote_count.gte'] = params.minVotes
+  if (params.page) query.page = params.page
+
+  return client
+    .get<ApiResponse<Movie>>('/discover/movie', { params: query, signal })
+    .then((res) => res.data)
+}
+
+export async function getRandomMovie(signal?: AbortSignal): Promise<Movie> {
+  const page = Math.floor(Math.random() * 500) + 1
+  const res = await client.get<ApiResponse<Movie>>('/discover/movie', {
+    params: {
+      sort_by: 'vote_count.desc',
+      'vote_count.gte': 500,
+      page,
+      include_adult: false,
+    },
+    signal,
+  })
+  const results = res.data.results ?? []
+  const pick = results[Math.floor(Math.random() * results.length)]
+  if (!pick) {
+    throw new Error('Could not find a random movie.')
+  }
+  return pick
 }
 
 let genreCache: Genre[] | null = null

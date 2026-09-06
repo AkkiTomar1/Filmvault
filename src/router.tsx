@@ -48,6 +48,14 @@ export const router = createHashRouter([
         errorElement: <RouteError message="We couldn't load these movies." />,
       },
       {
+        path: 'movie-night',
+        lazy: async () => {
+          const { default: Component } = await import('./pages/MovieNightPage')
+          return { Component }
+        },
+        errorElement: <RouteError message="We couldn't load movie night picks." />,
+      },
+      {
         path: '*',
         element: <Navigate to="/" replace />,
       },

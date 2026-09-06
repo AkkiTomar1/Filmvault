@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   client,
   genreName,
+  getDiscoverMovies,
   getGenres,
   getPopularMovies,
+  getRandomMovie,
+  getWatchProviders,
   resetGenreCache,
   searchMovies,
 } from '../api/tmdb'
@@ -93,5 +96,84 @@ describe('tmdb api', () => {
     expect(genreName(genres, 80)).toBe('Crime')
     expect(genreName(genres, 999)).toBeUndefined()
     expect(genreName([], 28)).toBeUndefined()
+  })
+
+  it('fetches watch providers for the movie in the given region', async () => {
+    mockedGet.mockResolvedValue({
+      data: {
+        id: 1,
+        results: {
+          US: {
+            link: 'https://www.themoviedb.org/movie/1/watch',
+            flatrate: [{ id: 8, name: 'Netflix', logo_path: '/netflix.svg' }],
+          },
+        },
+      },
+    } as never)
+
+    const offer = await getWatchProviders(1, 'US')
+
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/movie/1/watch/providers',
+      expect.objectContaining({}),
+    )
+    expect(offer?.flatrate?.[0]?.name).toBe('Netflix')
+  })
+
+  it('returns null when the region is missing from watch providers', async () => {
+    mockedGet.mockResolvedValue({
+      data: { id: 1, results: { US: { link: 'x' } } },
+    } as never)
+
+    await expect(getWatchProviders(1, 'IN')).resolves.toBeNull()
+  })
+
+  it('builds discover query params for genres, decade and runtime', async () => {
+    mockedGet.mockResolvedValue({ data: emptyResponse } as never)
+
+    await getDiscoverMovies({
+      genres: [28, 80],
+      releaseFrom: '1990-01-01',
+      releaseTo: '1999-12-31',
+      maxRuntime: 120,
+      minVotes: 200,
+    })
+
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/discover/movie',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          with_genres: '28,80',
+          'primary_release_date.gte': '1990-01-01',
+          'primary_release_date.lte': '1999-12-31',
+          'with_runtime.lte': 120,
+          'vote_count.gte': 200,
+        }),
+      }),
+    )
+  })
+
+  it('picks a random movie from a discover page with a decent vote count', async () => {
+    mockedGet.mockResolvedValue({
+      data: {
+        page: 1,
+        results: [
+          { id: 1, title: 'Alpha' },
+          { id: 2, title: 'Beta' },
+        ],
+        total_pages: 2,
+        total_results: 2,
+      },
+    } as never)
+
+    const movie = await getRandomMovie()
+
+    expect(['Alpha', 'Beta']).toContain(movie.title)
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/discover/movie',
+      expect.objectContaining({
+        params: expect.objectContaining({ 'vote_count.gte': 500 }),
+      }),
+    )
   })
 })

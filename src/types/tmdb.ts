@@ -62,3 +62,31 @@ export interface ApiResponse<T> {
 }
 
 export type SortKey = 'rating' | 'popularity' | 'release' | 'title'
+
+export interface Provider {
+  id: number
+  name: string
+  logo_path: string | null
+  display_priorities?: Record<string, number>
+}
+
+export interface ProviderOffer {
+  link?: string
+  flatrate?: Provider[]
+  rent?: Provider[]
+  buy?: Provider[]
+}
+
+export interface WatchProvidersResponse {
+  id: number
+  results: Record<string, ProviderOffer | undefined>
+}
+
+export interface DiscoverParams {
+  genres?: number[]
+  releaseFrom?: string
+  releaseTo?: string
+  maxRuntime?: number
+  minVotes?: number
+  page?: number
+}

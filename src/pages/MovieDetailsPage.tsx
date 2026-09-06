@@ -2,9 +2,16 @@ import type { LoaderFunctionArgs } from 'react-router-dom'
 import { Link, useLoaderData } from 'react-router-dom'
 import { FaHeart, FaRegHeart, FaPlay, FaStar } from 'react-icons/fa6'
 import MovieGrid from '../components/MovieGrid'
-import { getMovieCredits, getMovieDetails, getMovieVideos, getSimilarMovies } from '../api/tmdb'
-import type { CastMember, Movie, MovieDetails, Video } from '../types/tmdb'
+import {
+  getMovieCredits,
+  getMovieDetails,
+  getMovieVideos,
+  getSimilarMovies,
+  getWatchProviders,
+} from '../api/tmdb'
+import type { CastMember, Movie, MovieDetails, Provider, ProviderOffer, Video } from '../types/tmdb'
 import { imageUrl, releaseYear, formatRating } from '../lib/images'
+import { detectRegion } from '../lib/region'
 import { useWatchlistContext } from '../context/WatchlistContext'
 import { useWatchlistToggle } from '../hooks/useWatchlistToggle'
 import FallbackPoster from '../assets/Na.jpg'
@@ -14,6 +21,8 @@ export interface MovieDetailsLoaderData {
   videos: Video[]
   cast: CastMember[]
   similar: Movie[]
+  providers: ProviderOffer | null
+  region: string
 }
 
 export async function loader({ params }: LoaderFunctionArgs): Promise<MovieDetailsLoaderData> {
@@ -22,11 +31,13 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<MovieDetai
     throw new Response('Movie not found', { status: 404 })
   }
 
-  const [details, videos, credits, similar] = await Promise.all([
+  const region = detectRegion()
+  const [details, videos, credits, similar, providers] = await Promise.all([
     getMovieDetails(movieId),
     getMovieVideos(movieId),
     getMovieCredits(movieId),
     getSimilarMovies(movieId),
+    getWatchProviders(movieId, region),
   ])
 
   return {
@@ -34,6 +45,8 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<MovieDetai
     videos: videos.results,
     cast: credits.cast,
     similar: similar.results,
+    providers,
+    region,
   }
 }
 
@@ -71,8 +84,65 @@ function MovieCast({ cast }: { cast: CastMember[] }) {
   )
 }
 
+function ProviderLogo({ name, path }: { name: string; path: string | null }) {
+  if (!path) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-200 text-[8px] font-bold text-gray-400"
+      >
+        {name.charAt(0)}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={imageUrl(path, 'w45')}
+      alt=""
+      loading="lazy"
+      className="h-4 w-4 shrink-0 rounded bg-white object-contain"
+    />
+  )
+}
+
+type WatchTone = 'red' | 'blue' | 'green'
+
+function ProviderGroup({
+  title,
+  tone,
+  providers,
+}: {
+  title: string
+  tone: WatchTone
+  providers: Provider[]
+}) {
+  const tones: Record<WatchTone, string> = {
+    red: 'border-red-200 bg-red-50 text-red-700',
+    blue: 'border-blue-200 bg-blue-50 text-blue-700',
+    green: 'border-green-200 bg-green-50 text-green-700',
+  }
+  return (
+    <div className={`rounded-2xl border p-3 ${tones[tone]}`}>
+      <h4 className="mb-2 text-xs font-bold uppercase tracking-wider">{title}</h4>
+      <div className="flex flex-wrap gap-2">
+        {providers.map((provider) => (
+          <span
+            key={provider.id}
+            title={provider.name}
+            className="flex items-center gap-1.5 rounded-lg border border-white/70 bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm"
+          >
+            <ProviderLogo name={provider.name} path={provider.logo_path} />
+            {provider.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MovieDetailsPage() {
-  const { details, videos, cast, similar } = useLoaderData() as MovieDetailsLoaderData
+  const { details, videos, cast, similar, providers, region } =
+    useLoaderData() as MovieDetailsLoaderData
 
   const { isInWatchlist } = useWatchlistContext()
   const toggle = useWatchlistToggle()
@@ -162,6 +232,40 @@ export default function MovieDetailsPage() {
             <p className="leading-relaxed text-gray-700">{details.overview}</p>
           </section>
         )}
+
+        <section className="mt-8">
+          <h3 className="mb-2 flex items-center gap-2 text-xl font-bold">
+            <FaPlay className="text-xs text-red-600" aria-hidden="true" /> Where to Watch
+          </h3>
+          <p className="mb-3 text-sm text-gray-500">Streaming options for {region}.</p>
+
+          {providers && (providers.flatrate || providers.rent || providers.buy) ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {providers.flatrate && providers.flatrate.length > 0 && (
+                <ProviderGroup title="Now Streaming" tone="red" providers={providers.flatrate} />
+              )}
+              {providers.rent && providers.rent.length > 0 && (
+                <ProviderGroup title="Rent" tone="blue" providers={providers.rent} />
+              )}
+              {providers.buy && providers.buy.length > 0 && (
+                <ProviderGroup title="Buy" tone="green" providers={providers.buy} />
+              )}
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-gray-200 bg-white p-3 text-sm text-gray-500">
+              No streaming info for {region} yet.
+            </p>
+          )}
+
+          <a
+            href={`https://www.themoviedb.org/movie/${details.id}/watch?locale=${region}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 underline-offset-2 transition hover:text-blue-500 hover:underline"
+          >
+            View all options on TMDB
+          </a>
+        </section>
 
         {trailer && (
           <section className="mt-8">
