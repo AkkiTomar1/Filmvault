@@ -12,7 +12,7 @@ Discover trending movies, find **where to watch them**, and build your personal 
 - 🎬 **Trending movie grid** — responsive edge-to-edge grid (2–6 columns) with a modern numbered + ellipsis pagination bar.
 - 🔍 **Live navbar search** — debounced, race-safe search-as-you-type with poster thumbnails that jumps to the full search page.
 - 🎥 **Movie detail pages** — overview, runtime, genres, rating bar, cast, YouTube trailer, and similar movies.
-- 📺 **Where to Watch** — streaming/rent/buy provider logos for your detected region, with a direct link to TMDB's watch page.
+- 📺 **Where to Watch** — a row of streaming/OTT provider icons (Netflix, Prime Video, Disney+…) for your detected region, each icon deep-linked to that movie on the platform; Watchmode provides exact links where the plan allows, and other regions/platforms fall back to built-in provider search links.
 - 🎲 **Movie Night Generator** (`/movie-night`) — pick a mood (genres), an era (80s → 20s), and a length, and get **5 shuffled picks** you can re-roll instantly.
 - 🃏 **Surprise Me** — one click (navbar or generator) sends you to a random, highly-voted movie.
 - 🗂️ **Watchlist** — persisted to `localStorage` with **working** genre filters, search, sorting, real genre names, per-row delete, and clear-all — all with **Undo** toasts.
@@ -25,6 +25,7 @@ Discover trending movies, find **where to watch them**, and build your personal 
 
 - **Node.js 20+** (CI uses v20)
 - A free [TMDB API key](https://www.themoviedb.org/settings/api)
+- A free [Watchmode API key](https://www.watchmode.com) (powers per-platform streaming links)
 
 ### Setup
 
@@ -34,7 +35,7 @@ cp .env.example .env   # then paste your real API key into .env
 npm run dev            # http://localhost:5173
 ```
 
-> **Environment variables** (`.env`): `VITE_TMDB_API_KEY`. Never commit real keys — `.env` is gitignored. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for CI setup.
+> **Environment variables** (`.env`): `VITE_TMDB_API_KEY` and `VITE_WATCHMODE_API_KEY` (plus the optional `VITE_WATCHMODE_REGION` to force the streaming region). Never commit real keys — `.env` is gitignored. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for CI setup.
 
 ## 📜 Scripts
 
@@ -53,10 +54,10 @@ npm run dev            # http://localhost:5173
 
 | Layer        | Choice                                                        |
 | ------------ | ------------------------------------------------------------- |
-| UI           | React 19 + **react-router-dom v7** (`createHashRouter`, `lazy`, `loader`) |
+| UI           | React 19 + **react-router-dom v7** (`createBrowserRouter`, `lazy`, `loader`) |
 | Build        | Vite 7 (`@vitejs/plugin-react`) + `@tailwindcss/vite`          |
 | Styling      | Tailwind CSS v4 (utility-first, custom keyframes)              |
-| HTTP         | Axios (typed TMDB client)                                      |
+| HTTP         | Axios (typed TMDB + Watchmode clients)                            |
 | Icons        | `react-icons` (Font Awesome 6)                                 |
 | Language     | TypeScript (strict: `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`) |
 | Testing      | Vitest + React Testing Library + jsdom                         |
@@ -76,7 +77,8 @@ Filmvault/
 │   ├── TESTING.md                 # Test setup & patterns
 │   └── DEPLOYMENT.md              # HashRouter, base path, env secrets
 ├── src/
-│   ├── api/tmdb.ts                # Typed TMDB API layer (axios client)
+│   ├── api/tmdb.ts                 # Typed TMDB API layer (axios client)
+│   ├── api/watchmode.ts            # Watchmode streaming-source links (axios client)
 │   ├── assets/                    # Static images (logo/fallback)
 │   ├── components/                # Navbar, Footer, Banner, MovieCard, MovieGrid,
 │   │                              # Pagination, LoadingSkeleton, ErrorState, Layout, …
@@ -86,6 +88,7 @@ Filmvault/
 │   ├── pages/                     # Home, Search, Details, Watchlist, Genre, Movie Night
 │   ├── test/setup.ts              # Vitest setup
 │   └── types/tmdb.ts              # TMDB models + app types
+│   └── types/watchmode.ts         # Watchmode streaming-source types
 ├── index.html                     # SPA shell + meta tags
 ├── vite.config.js                 # Vite + Vitest config (`base: '/Filmvault/'`)
 └── tsconfig.json
@@ -98,10 +101,10 @@ Filmvault/
 1. `npm ci`
 2. `npm run lint`
 3. `npm test`
-4. `npm run build` (with `VITE_TMDB_API_KEY` injected from the `TMDB_API_KEY` repo secret)
+4. `npm run build` (with `VITE_TMDB_API_KEY` + `VITE_WATCHMODE_API_KEY` injected from the `TMDB_API_KEY` and `WATCHMODE_API_KEY` repo secrets)
 5. Publish `dist/` to GitHub Pages
 
-To deploy, add a repo secret named `TMDB_API_KEY` with your API key, then push to `main`. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+To deploy, add repo secrets named `TMDB_API_KEY` and `WATCHMODE_API_KEY` with your keys, then push to `main`. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## 📚 Docs
 

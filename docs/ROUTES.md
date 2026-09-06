@@ -1,6 +1,6 @@
 # Routes
 
-All routes are defined in `src/router.tsx` with `createHashRouter`. URLs are hash-based (`/#/movie/123`) because the app is served as a static bundle on GitHub Pages — no server rewrites are needed.
+All routes are defined in `src/router.tsx` with `createBrowserRouter`. URLs are clean paths (`/movie/123`) with `basename: import.meta.env.BASE_URL` (the `/Filmvault/` base in config). In-app navigation is fully client-side; a hard refresh on a deep link is caught by the `dist/404.html` fallback on static hosts.
 
 ## Route table
 
@@ -32,13 +32,17 @@ Every page component is wrapped in `lazy(() => import('...').then(m => ({ Compon
 `src/pages/MovieDetailsPage.tsx`
 
 1. Read `params.id` → `Number`.
-2. Fire five requests **in parallel** with one `AbortController` shared across them:
+2. Fire six requests **in parallel**:
    - `getMovieDetails(id, signal)`
    - `getMovieCredits(id, signal)`
    - `getMovieVideos(id, signal)`
    - `getSimilarMovies(id, 1, signal)`
-   - `getWatchProviders(id, detectRegion(), signal)`
-3. On success, return `{ details, credits, videos, similar, providers }`.
+   - `getWatchProviders(id, region, signal)` (TMDB OTT data — deep-link fallback)
+   - `getWatchmodeOffers(id, region, signal)` — deeplinked offers per platform; wrapped in `.catch(() => [])` so Watchmode outages never break the page
+3. `region` comes from `detectRegion()`: browser locale, or the `VITE_WATCHMODE_REGION` override when set.
+4. On success, return `{ details, credits, videos, similar, providers, watchmodeOffers, region }`.
+
+The Where to Watch section renders a single wrapping row of OTT (subscription/free) provider icons, each deeplinked to that movie on the platform. Watchmode offers provide exact links where the plan allows; otherwise TMDB `providers.flatrate` icons are deep-linked via `buildProviderUrl` (built-in provider templates) and any platform without a link is skipped. Rent/buy platforms are not shown.
 
 If `details` is missing, the loader throws and the `errorElement` renders (covers unknown/removed IDs).
 

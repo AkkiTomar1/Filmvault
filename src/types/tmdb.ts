@@ -64,10 +64,10 @@ export interface ApiResponse<T> {
 export type SortKey = 'rating' | 'popularity' | 'release' | 'title'
 
 export interface Provider {
-  id: number
-  name: string
+  provider_id: number
+  provider_name: string
   logo_path: string | null
-  display_priorities?: Record<string, number>
+  display_priority?: number
 }
 
 export interface ProviderOffer {

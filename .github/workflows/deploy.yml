@@ -37,6 +37,7 @@ jobs:
       - name: Build
         env:
           VITE_TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          VITE_WATCHMODE_API_KEY: ${{ secrets.WATCHMODE_API_KEY }}
         run: npm run build
 
       - name: Deploy to GitHub Pages

@@ -4,7 +4,7 @@ This document explains how Filmvault is put together at a high level.
 
 ## Overview
 
-Filmvault is a client-side-only React SPA. All movie data comes from the TMDB REST API through a thin typed Axios layer (`src/api/tmdb.ts`). User state (the watchlist and transient toasts) lives in React Context and is persisted to `localStorage`. Routing uses `createHashRouter` from react-router v7 with route-level code splitting (`lazy`) and data loading (`loader`).
+Filmvault is a client-side-only React SPA. All movie data comes from the TMDB REST API through a thin typed Axios layer (`src/api/tmdb.ts`), and per-platform deeplinks come from the Watchmode API (`src/api/watchmode.ts`). User state (the watchlist and transient toasts) lives in React Context and is persisted to `localStorage`. Routing uses `createBrowserRouter` from react-router v7 with route-level code splitting (`lazy`) and data loading (`loader`).
 
 Because it's a single static bundle deployed to GitHub Pages, there is **no backend, no account system, and no server-side rendering**.
 
@@ -16,7 +16,7 @@ Because it's a single static bundle deployed to GitHub Pages, there is **no back
 StrictMode
  └─ ToastProvider            // transient toasts w/ undo action
      └─ WatchlistProvider    // watchlist in localStorage
-         └─ RouterProvider   // createHashRouter (src/router.tsx)
+         └─ RouterProvider   // createBrowserRouter (src/router.tsx)
 ```
 
 Providers wrap the router so every route can call `useWatchlistContext()`, `useToast()`, and `useWatchlistToggle()`.
@@ -35,7 +35,8 @@ Providers wrap the router so every route can call `useWatchlistContext()`, `useT
 | `/movie-night` | MovieNightPage         | —      | RouteError   |
 | `*`            | `Navigate` → `/`       | —      | —            |
 
-- `createHashRouter` (URLs like `/#/movie/123`) works on static hosts and GitHub Pages without server rewrites.
+- `createBrowserRouter` is configured with `basename: import.meta.env.BASE_URL` (`/Filmvault/`), so routes are clean URLs like `/movie/123`. On static hosts the `dist/404.html` copy of `index.html` (emitted by the `spa-404-fallback` Vite plugin) handles deep-link refreshes.
+- `*` redirects unknown paths back to `/`.
 - Every page is imported with `lazy` → Vite code-splits each route into its own chunk.
 - Only `MovieDetailsPage` uses `loader` (it fetches details + videos + credits + similar + watch providers in parallel before first paint).
 
@@ -82,7 +83,7 @@ Layout
 │  ├─ HomePage → Banner · MovieGrid · Pagination
 │  ├─ SearchResultsPage → MovieGrid · Pagination
 │  ├─ GenreMoviesPage → MovieGrid · Pagination
-│  ├─ MovieDetailsPage → hero · overview · Where to Watch · trailer · cast · similar
+│  ├─ MovieDetailsPage → hero · overview · Where to Watch (OTT icons, linked) · trailer · cast · similar
 │  ├─ MovieNightPage → 3-step picker · MovieGrid · re-roll
 │  └─ WatchlistPage → filters · table
 └─ Footer (brand · explore · genres · socials · TMDB attribution)

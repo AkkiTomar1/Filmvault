@@ -27,9 +27,20 @@ export const client = axios.create({
 
 client.interceptors.response.use(
   (res) => res,
-  (error) => {
+  async (error) => {
     if (axios.isCancel(error)) {
       return Promise.reject(error)
+    }
+    // Retry idempotent GETs once on transient network failures (socket /
+    // TLS resets, no HTTP status) so the movie loader survives blips. HTTP
+    // errors (4xx/5xx) and aborts are not retried.
+    const config = error.config as
+      | (typeof error.config & { _filmvaultRetried?: boolean })
+      | undefined
+    if (config && !config._filmvaultRetried && !error.response) {
+      config._filmvaultRetried = true
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      return client.request(config)
     }
     return Promise.reject(error)
   },

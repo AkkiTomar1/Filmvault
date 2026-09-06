@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import axios from 'axios'
 import {
   client,
   genreName,
@@ -11,13 +12,28 @@ import {
   searchMovies,
 } from '../api/tmdb'
 
+const hoisted = vi.hoisted(() => {
+  let rejectionHandler: ((error: unknown) => unknown) | undefined
+  const responseUse = vi.fn(
+    (_onFulfilled: unknown, onRejected: (error: unknown) => unknown) => {
+      rejectionHandler = onRejected
+    },
+  )
+  return {
+    responseUse,
+    getRejectionHandler: () => rejectionHandler,
+  }
+})
+
 vi.mock('axios', () => {
   const get = vi.fn()
+  const request = vi.fn()
   return {
     default: {
       create: () => ({
         get,
-        interceptors: { response: { use: vi.fn() } },
+        request,
+        interceptors: { response: { use: hoisted.responseUse } },
       }),
       isCancel: vi.fn(() => false),
     },
@@ -25,6 +41,11 @@ vi.mock('axios', () => {
 })
 
 const mockedGet = vi.mocked(client.get)
+const mockedRequest = vi.mocked(client.request)
+
+function rejectionHandler(): (error: unknown) => Promise<unknown> {
+  return hoisted.getRejectionHandler() as (error: unknown) => Promise<unknown>
+}
 
 const emptyResponse = {
   page: 1,
@@ -36,6 +57,8 @@ const emptyResponse = {
 describe('tmdb api', () => {
   beforeEach(() => {
     mockedGet.mockReset()
+    mockedRequest.mockReset()
+    vi.mocked(axios.isCancel).mockReturnValue(false)
     resetGenreCache()
   })
 
@@ -105,7 +128,7 @@ describe('tmdb api', () => {
         results: {
           US: {
             link: 'https://www.themoviedb.org/movie/1/watch',
-            flatrate: [{ id: 8, name: 'Netflix', logo_path: '/netflix.svg' }],
+            flatrate: [{ provider_id: 8, provider_name: 'Netflix', logo_path: '/netflix.svg' }],
           },
         },
       },
@@ -117,7 +140,7 @@ describe('tmdb api', () => {
       '/movie/1/watch/providers',
       expect.objectContaining({}),
     )
-    expect(offer?.flatrate?.[0]?.name).toBe('Netflix')
+    expect(offer?.flatrate?.[0]?.provider_name).toBe('Netflix')
   })
 
   it('returns null when the region is missing from watch providers', async () => {
@@ -175,5 +198,34 @@ describe('tmdb api', () => {
         params: expect.objectContaining({ 'vote_count.gte': 500 }),
       }),
     )
+  })
+
+  it('retries once on transient network errors', async () => {
+    const handleError = rejectionHandler()
+    mockedRequest.mockResolvedValue({ data: emptyResponse } as never)
+
+    const error = { config: { url: '/movie/popular', method: 'get' }, response: undefined }
+
+    await expect(handleError(error)).resolves.toEqual({ data: emptyResponse })
+    expect(mockedRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not retry HTTP error responses', async () => {
+    const handleError = rejectionHandler()
+
+    const error = { config: { url: '/movie/popular' }, response: { status: 404 } }
+
+    await expect(handleError(error)).rejects.toBe(error)
+    expect(mockedRequest).not.toHaveBeenCalled()
+  })
+
+  it('does not retry cancelled requests', async () => {
+    const handleError = rejectionHandler()
+    vi.mocked(axios.isCancel).mockReturnValueOnce(true)
+
+    const cancelError = new Error('canceled')
+
+    await expect(handleError(cancelError)).rejects.toBe(cancelError)
+    expect(mockedRequest).not.toHaveBeenCalled()
   })
 })

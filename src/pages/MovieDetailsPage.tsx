@@ -9,9 +9,12 @@ import {
   getSimilarMovies,
   getWatchProviders,
 } from '../api/tmdb'
-import type { CastMember, Movie, MovieDetails, Provider, ProviderOffer, Video } from '../types/tmdb'
+import type { CastMember, Movie, MovieDetails, ProviderOffer, Video } from '../types/tmdb'
 import { imageUrl, releaseYear, formatRating } from '../lib/images'
+import { buildProviderUrl } from '../lib/provider-links'
 import { detectRegion } from '../lib/region'
+import { getWatchmodeOffers } from '../api/watchmode'
+import type { WatchmodeOffer } from '../types/watchmode'
 import { useWatchlistContext } from '../context/WatchlistContext'
 import { useWatchlistToggle } from '../hooks/useWatchlistToggle'
 import FallbackPoster from '../assets/Na.jpg'
@@ -22,6 +25,7 @@ export interface MovieDetailsLoaderData {
   cast: CastMember[]
   similar: Movie[]
   providers: ProviderOffer | null
+  watchmodeOffers: WatchmodeOffer[]
   region: string
 }
 
@@ -32,12 +36,13 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<MovieDetai
   }
 
   const region = detectRegion()
-  const [details, videos, credits, similar, providers] = await Promise.all([
+  const [details, videos, credits, similar, providers, watchmodeOffers] = await Promise.all([
     getMovieDetails(movieId),
     getMovieVideos(movieId),
     getMovieCredits(movieId),
     getSimilarMovies(movieId),
     getWatchProviders(movieId, region),
+    getWatchmodeOffers(movieId, region).catch(() => [] as WatchmodeOffer[]),
   ])
 
   return {
@@ -46,6 +51,7 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<MovieDetai
     cast: credits.cast,
     similar: similar.results,
     providers,
+    watchmodeOffers,
     region,
   }
 }
@@ -84,64 +90,49 @@ function MovieCast({ cast }: { cast: CastMember[] }) {
   )
 }
 
-function ProviderLogo({ name, path }: { name: string; path: string | null }) {
-  if (!path) {
-    return (
-      <span
-        aria-hidden="true"
-        className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-gray-200 text-[8px] font-bold text-gray-400"
-      >
-        {name.charAt(0)}
-      </span>
-    )
-  }
-  return (
-    <img
-      src={imageUrl(path, 'w45')}
-      alt=""
-      loading="lazy"
-      className="h-4 w-4 shrink-0 rounded bg-white object-contain"
-    />
-  )
+interface OttEntry {
+  key: string
+  name: string
+  logoUrl: string | null
+  url: string
 }
 
-type WatchTone = 'red' | 'blue' | 'green'
-
-function ProviderGroup({
-  title,
-  tone,
-  providers,
-}: {
-  title: string
-  tone: WatchTone
-  providers: Provider[]
-}) {
-  const tones: Record<WatchTone, string> = {
-    red: 'border-red-200 bg-red-50 text-red-700',
-    blue: 'border-blue-200 bg-blue-50 text-blue-700',
-    green: 'border-green-200 bg-green-50 text-green-700',
-  }
+function OttIconRow({ entries }: { entries: OttEntry[] }) {
   return (
-    <div className={`rounded-2xl border p-3 ${tones[tone]}`}>
-      <h4 className="mb-2 text-xs font-bold uppercase tracking-wider">{title}</h4>
-      <div className="flex flex-wrap gap-2">
-        {providers.map((provider) => (
-          <span
-            key={provider.id}
-            title={provider.name}
-            className="flex items-center gap-1.5 rounded-lg border border-white/70 bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm"
-          >
-            <ProviderLogo name={provider.name} path={provider.logo_path} />
-            {provider.name}
-          </span>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center gap-3">
+      {entries.map((entry) => (
+        <a
+          key={entry.key}
+          href={entry.url}
+          target="_blank"
+          rel="noreferrer"
+          title={`Watch on ${entry.name}`}
+          aria-label={`Watch on ${entry.name}`}
+          className="block rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5 transition hover:ring-2 hover:ring-red-400"
+        >
+          {entry.logoUrl ? (
+            <img
+              src={entry.logoUrl}
+              alt=""
+              loading="lazy"
+              className="h-10 w-10 rounded-lg object-contain"
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200 text-sm font-bold text-gray-400"
+            >
+              {entry.name.charAt(0)}
+            </span>
+          )}
+        </a>
+      ))}
     </div>
   )
 }
 
 export default function MovieDetailsPage() {
-  const { details, videos, cast, similar, providers, region } =
+  const { details, videos, cast, similar, providers, watchmodeOffers, region } =
     useLoaderData() as MovieDetailsLoaderData
 
   const { isInWatchlist } = useWatchlistContext()
@@ -150,6 +141,39 @@ export default function MovieDetailsPage() {
   const inWatchlist = isInWatchlist(details.id)
   const backdrop = imageUrl(details.backdrop_path, 'w1280')
   const ratingPercent = (details.vote_average / 10) * 100
+
+  const ottEntries: OttEntry[] = []
+  let watchmodeAttribution = false
+  if (watchmodeOffers.length > 0) {
+    const seen = new Set<string>()
+    for (const offer of watchmodeOffers) {
+      if (offer.type !== 'sub' && offer.type !== 'free') continue
+      if (seen.has(offer.name)) continue
+      seen.add(offer.name)
+      ottEntries.push({
+        key: `${offer.sourceId}`,
+        name: offer.name,
+        logoUrl: offer.logoUrl,
+        url: offer.webUrl,
+      })
+    }
+    watchmodeAttribution = ottEntries.length > 0
+  } else if (providers?.flatrate && providers.flatrate.length > 0) {
+    const seen = new Set<string>()
+    for (const provider of providers.flatrate) {
+      if (seen.has(provider.provider_name)) continue
+      const url = buildProviderUrl(provider.provider_name, details.title)
+      if (!url) continue
+      seen.add(provider.provider_name)
+      ottEntries.push({
+        key: `${provider.provider_id}`,
+        name: provider.provider_name,
+        logoUrl: imageUrl(provider.logo_path, 'w45') ?? null,
+        url,
+      })
+    }
+  }
+
   const trailer = videos.find(
     (video) => video.site === 'YouTube' && video.type === 'Trailer',
   )
@@ -239,32 +263,29 @@ export default function MovieDetailsPage() {
           </h3>
           <p className="mb-3 text-sm text-gray-500">Streaming options for {region}.</p>
 
-          {providers && (providers.flatrate || providers.rent || providers.buy) ? (
-            <div className="grid gap-3 sm:grid-cols-3">
-              {providers.flatrate && providers.flatrate.length > 0 && (
-                <ProviderGroup title="Now Streaming" tone="red" providers={providers.flatrate} />
+          {ottEntries.length > 0 ? (
+            <>
+              <OttIconRow entries={ottEntries} />
+              {watchmodeAttribution && (
+                <p className="mt-2 text-xs text-gray-400">
+                  Streaming links by{' '}
+                  <a
+                    href="https://www.watchmode.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline-offset-2 hover:text-gray-500 hover:underline"
+                  >
+                    Watchmode
+                  </a>
+                  .
+                </p>
               )}
-              {providers.rent && providers.rent.length > 0 && (
-                <ProviderGroup title="Rent" tone="blue" providers={providers.rent} />
-              )}
-              {providers.buy && providers.buy.length > 0 && (
-                <ProviderGroup title="Buy" tone="green" providers={providers.buy} />
-              )}
-            </div>
+            </>
           ) : (
             <p className="rounded-2xl border border-gray-200 bg-white p-3 text-sm text-gray-500">
               No streaming info for {region} yet.
             </p>
           )}
-
-          <a
-            href={`https://www.themoviedb.org/movie/${details.id}/watch?locale=${region}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 underline-offset-2 transition hover:text-blue-500 hover:underline"
-          >
-            View all options on TMDB
-          </a>
         </section>
 
         {trailer && (
