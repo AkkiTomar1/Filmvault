@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'node_modules']),
+  // `server/` is a separate Node/Express app with its own package.json,
+  // tsconfig and eslint config. It must not be linted with browser globals.
+  globalIgnores(['dist', 'node_modules', 'server']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -23,8 +25,7 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
-  },
-  {
+  },\n  {\n    files: ['*.config.js', 'vite.config.js'],\n    languageOptions: { globals: { ...globals.node } },\n  },\n  {
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
@@ -47,8 +48,19 @@ export default defineConfig([
       ],
       'react-refresh/only-export-components': [
         'error',
-        { allowExportNames: ['loader', 'useWatchlistContext', 'useToast'] },
+        { allowExportNames: ['loader', 'useWatchlistContext', 'useToast', 'useAuth'] },
       ],
-    },
-  },
-])
+    },\n  },\n  {\n    files: ['*.config.js', 'vite.config.js'],
+    languageOptions: { globals: { ...globals.node } },
+  },])
+
+
+
+
+
+
+
+
+
+
+
