@@ -1,0 +1,133 @@
+// Filmvault accounts API — Prisma schema.
+// Migrations are committed under prisma/migrations and applied with
+// `prisma migrate deploy` (server/package.json: prisma:deploy).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// An account. `tokenVersion` is embedded in every access token; bumping it
+/// invalidates every outstanding access token for the user in one write.
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  emailVerified DateTime?
+  displayName   String?
+  bio           String?
+  tokenVersion  Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  refreshTokens   RefreshToken[]
+  watchlist       WatchlistItem[]
+  history         WatchHistoryEntry[]
+  reviews         Review[]
+  verificationTks VerificationToken[]
+  resetTks        PasswordResetToken[]
+
+  @@map("users")
+}
+
+/// A rotating refresh token. Only `sha256(token)` is stored, never the token
+/// itself. `familyId` chains a rotation lineage so that replaying a spent
+/// token can revoke the whole family (OAuth 2.0 BCP reuse detection).
+model RefreshToken {
+  id            String    @id @default(cuid())
+  userId        String
+  tokenHash     String    @unique
+  familyId      String
+  usedAt        DateTime?
+  expiresAt     DateTime
+  userAgentHash String?
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model WatchlistItem {
+  id         String   @id @default(cuid())
+  userId     String
+  movieId    Int
+  title      String
+  posterPath String?
+  addedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Makes the guest-watchlist merge idempotent via upsert.
+  @@unique([userId, movieId])
+  @@index([userId, addedAt])
+  @@map("watchlist_items")
+}
+
+/// One row per movie the user has opened, upserted and re-stamped on revisit,
+/// so `viewedAt` doubles as "continue watching" ordering.
+model WatchHistoryEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  movieId    Int
+  title      String
+  posterPath String?
+  viewedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@index([userId, viewedAt])
+  @@map("watch_history")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   Int
+  rating    Int
+  body      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@index([movieId, createdAt])
+  @@map("reviews")
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
