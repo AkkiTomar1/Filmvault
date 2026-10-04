@@ -97,7 +97,7 @@ client.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token) {
     config.headers = AxiosHeaders.from(config.headers)
-    config.headers.set('Authorization', Bearer )
+    config.headers.set('Authorization', `Bearer ${token}` )
   }
   return config
 })
@@ -123,7 +123,7 @@ client.interceptors.response.use(
       try {
         const token = await refreshSingleFlight()
         config.headers = AxiosHeaders.from(config.headers)
-        config.headers.set('Authorization', Bearer )
+        config.headers.set('Authorization', `Bearer ${token}` )
         return client.request(config)
       } catch (refreshError) {
         forceLogout(reasonFrom(refreshError))
@@ -133,3 +133,4 @@ client.interceptors.response.use(
     return Promise.reject(toApiError(error))
   }
 )
+
