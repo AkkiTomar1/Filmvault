@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { ReactNode } from 'react'
 import type { UserProfile, StoredUserAccount, SignupInput, LoginInput } from '../types/auth'
 import { AVATAR_PRESETS } from '../lib/avatars'
-import { createJwtToken, verifyJwtToken, type JwtPayload } from '../lib/jwt'
+import { createJwtToken, verifyJwtToken, decodeJwtPayload, type JwtPayload } from '../lib/jwt'
+import { apiRegister, apiLogin, apiGetMe, apiUpdateProfile } from '../api/backend'
 
 const USERS_STORAGE_KEY = 'filmvault_users_v1'
 const JWT_STORAGE_KEY = 'filmvault_jwt_token_v1'
@@ -26,7 +27,7 @@ interface AuthContextValue {
   ) => Promise<{ success: boolean; error?: string }>
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 function loadStoredUsers(): StoredUserAccount[] {
   try {
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login')
 
-  // Cryptographically verify JWT session on mount
+  // Cryptographically verify & sync JWT session on mount
   useEffect(() => {
     async function initializeSession() {
       try {
@@ -66,6 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
 
+        // 1. Try to validate with MongoDB backend API
+        const serverCheck = await apiGetMe(storedToken)
+        if (serverCheck.success && serverCheck.user) {
+          setUser(serverCheck.user)
+          setToken(storedToken)
+          setJwtPayload(decodeJwtPayload(storedToken))
+          setIsTokenVerified(true)
+          return
+        }
+
+        // 2. If backend is unreachable, fallback to client-side verification
         const verification = await verifyJwtToken(storedToken)
         if (verification.valid && verification.payload) {
           const users = loadStoredUsers()
@@ -78,16 +90,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setJwtPayload(verification.payload)
             setIsTokenVerified(true)
           } else {
-            // User ID from JWT is not found in database
-            localStorage.removeItem(JWT_STORAGE_KEY)
-            setUser(null)
-            setToken(null)
-            setJwtPayload(null)
-            setIsTokenVerified(false)
+            setUser({
+              id: verification.payload.sub,
+              name: verification.payload.name,
+              email: verification.payload.email,
+              avatar: verification.payload.avatar,
+              preferredRegion: verification.payload.preferredRegion,
+              createdAt: new Date().toISOString(),
+            })
+            setToken(storedToken)
+            setJwtPayload(verification.payload)
+            setIsTokenVerified(true)
           }
         } else {
-          // Token signature invalid or expired
-          console.warn('JWT verification failed:', verification.error)
           localStorage.removeItem(JWT_STORAGE_KEY)
           setUser(null)
           setToken(null)
@@ -127,6 +142,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (trimmedPassword.length < 6)
         return { success: false, error: 'Password must be at least 6 characters' }
 
+      // 1. Try Backend API Registration
+      const serverRes = await apiRegister({
+        name: trimmedName,
+        email: trimmedEmail,
+        password: trimmedPassword,
+        avatar: input.avatar || AVATAR_PRESETS[0].id,
+      })
+
+      if (serverRes.success && serverRes.token && serverRes.user) {
+        localStorage.setItem(JWT_STORAGE_KEY, serverRes.token)
+        setUser(serverRes.user)
+        setToken(serverRes.token)
+        setJwtPayload(decodeJwtPayload(serverRes.token))
+        setIsTokenVerified(true)
+        setIsAuthModalOpen(false)
+        return { success: true }
+      }
+
+      // If backend gave a real validation error (e.g. duplicate email), return it
+      if (serverRes.error && serverRes.error !== 'Could not connect to backend server') {
+        return { success: false, error: serverRes.error }
+      }
+
+      // 2. Fallback to Local Offline Store if backend server is not running
       const users = loadStoredUsers()
       if (users.some((u) => u.email === trimmedEmail)) {
         return { success: false, error: 'An account with this email already exists' }
@@ -148,7 +187,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       users.push(newUser)
       saveStoredUsers(users)
 
-      // Generate signed JWT token
       const jwtToken = await createJwtToken({
         sub: userId,
         name: trimmedName,
@@ -177,6 +215,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const trimmedEmail = input.email.trim().toLowerCase()
       const trimmedPassword = input.password.trim()
 
+      if (!trimmedEmail || !trimmedPassword) {
+        return { success: false, error: 'Email and password are required' }
+      }
+
+      // 1. Try Backend API Login
+      const serverRes = await apiLogin({ email: trimmedEmail, password: trimmedPassword })
+      if (serverRes.success && serverRes.token && serverRes.user) {
+        localStorage.setItem(JWT_STORAGE_KEY, serverRes.token)
+        setUser(serverRes.user)
+        setToken(serverRes.token)
+        setJwtPayload(decodeJwtPayload(serverRes.token))
+        setIsTokenVerified(true)
+        setIsAuthModalOpen(false)
+        return { success: true }
+      }
+
+      // If backend gave invalid credentials error, return it directly
+      if (serverRes.error && serverRes.error !== 'Could not connect to backend server') {
+        return { success: false, error: serverRes.error }
+      }
+
+      // 2. Fallback to Local Offline Store
       const users = loadStoredUsers()
       const found = users.find((u) => u.email === trimmedEmail)
 
@@ -188,7 +248,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: 'Incorrect password' }
       }
 
-      // Generate signed JWT token
       const jwtToken = await createJwtToken({
         sub: found.id,
         name: found.name,
@@ -227,39 +286,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ): Promise<{ success: boolean; error?: string }> => {
       if (!user) return { success: false, error: 'Not authenticated' }
 
-      const users = loadStoredUsers()
-      const index = users.findIndex((u) => u.id === user.id)
-      if (index === -1) return { success: false, error: 'User record not found' }
-
-      const updatedAccount: StoredUserAccount = {
-        ...users[index],
-        ...updates,
-        name: updates.name ? updates.name.trim() : users[index].name,
+      // 1. If online and token available, update on backend
+      if (token) {
+        const serverRes = await apiUpdateProfile(token, updates)
+        if (serverRes.success && serverRes.user) {
+          setUser(serverRes.user)
+          return { success: true }
+        }
       }
 
-      users[index] = updatedAccount
-      saveStoredUsers(users)
+      // 2. Fallback to local store
+      const users = loadStoredUsers()
+      const index = users.findIndex((u) => u.id === user.id)
+      if (index !== -1) {
+        const updatedAccount: StoredUserAccount = {
+          ...users[index],
+          ...updates,
+          name: updates.name ? updates.name.trim() : users[index].name,
+        }
+        users[index] = updatedAccount
+        saveStoredUsers(users)
+        const { passwordHash: _, ...newProfile } = updatedAccount
+        setUser(newProfile)
+      } else {
+        setUser((prev) => (prev ? { ...prev, ...updates } : null))
+      }
 
-      const { passwordHash: _, ...newProfile } = updatedAccount
-      setUser(newProfile)
-
-      // Re-sign JWT with updated claims
+      // Re-sign client JWT
       const newJwt = await createJwtToken({
-        sub: newProfile.id,
-        name: newProfile.name,
-        email: newProfile.email,
-        avatar: newProfile.avatar,
-        preferredRegion: newProfile.preferredRegion,
+        sub: user.id,
+        name: updates.name || user.name,
+        email: user.email,
+        avatar: updates.avatar || user.avatar,
+        preferredRegion: updates.preferredRegion || user.preferredRegion,
       })
       localStorage.setItem(JWT_STORAGE_KEY, newJwt)
       setToken(newJwt)
-
-      const verification = await verifyJwtToken(newJwt)
-      setJwtPayload(verification.payload ?? null)
+      setJwtPayload(decodeJwtPayload(newJwt))
 
       return { success: true }
     },
-    [user],
+    [user, token],
   )
 
   return (
