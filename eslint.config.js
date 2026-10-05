@@ -47,7 +47,7 @@ export default defineConfig([
       ],
       'react-refresh/only-export-components': [
         'error',
-        { allowExportNames: ['loader', 'useWatchlistContext', 'useToast'] },
+        { allowExportNames: ['loader', 'useWatchlistContext', 'useToast', 'useAuth'] },
       ],
     },
   },

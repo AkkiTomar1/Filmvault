@@ -5,13 +5,16 @@ import './index.css'
 import { router } from './router'
 import { WatchlistProvider } from './context/WatchlistContext'
 import { ToastProvider } from './context/ToastContext'
+import { AuthProvider } from './context/AuthContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ToastProvider>
-      <WatchlistProvider>
-        <RouterProvider router={router} />
-      </WatchlistProvider>
+      <AuthProvider>
+        <WatchlistProvider>
+          <RouterProvider router={router} />
+        </WatchlistProvider>
+      </AuthProvider>
     </ToastProvider>
   </StrictMode>,
 )
