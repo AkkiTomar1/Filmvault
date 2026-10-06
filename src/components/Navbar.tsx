@@ -1,10 +1,20 @@
-import AccountMenu from './AccountMenu'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { FaMagnifyingGlass, FaChevronDown, FaFilm, FaClapperboard, FaDice } from 'react-icons/fa6'
+import {
+  FaMagnifyingGlass,
+  FaChevronDown,
+  FaFilm,
+  FaClapperboard,
+  FaDice,
+  FaUser,
+  FaArrowRightFromBracket,
+  FaHeart,
+} from 'react-icons/fa6'
 import Logo from '../assets/Na.jpg'
 import { useWatchlistContext } from '../context/WatchlistContext'
+import { useAuth } from '../context/AuthContext'
+import { getAvatarPreset } from '../lib/avatars'
 import { getGenres, searchMovies, getRandomMovie } from '../api/tmdb'
 import type { Genre, Movie } from '../types/tmdb'
 import { imageUrl, releaseYear } from '../lib/images'
@@ -24,6 +34,7 @@ export default function Navbar() {
   const [query, setQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isGenreOpen, setIsGenreOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<Movie[]>([])
   const [genres, setGenres] = useState<Genre[]>([])
   const [loadingGenres, setLoadingGenres] = useState(false)
@@ -31,14 +42,17 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { watchlist } = useWatchlistContext()
+  const { user, isAuthenticated, logout, openAuthModal } = useAuth()
 
   const searchBoxRef = useRef<HTMLDivElement>(null)
   const genreBoxRef = useRef<HTMLDivElement>(null)
+  const profileBoxRef = useRef<HTMLDivElement>(null)
   const [picking, setPicking] = useState(false)
 
   useEffect(() => {
     setIsSearchOpen(false)
     setIsGenreOpen(false)
+    setIsProfileOpen(false)
   }, [location.pathname, location.search])
 
   useEffect(() => {
@@ -87,6 +101,9 @@ export default function Navbar() {
       }
       if (genreBoxRef.current && !genreBoxRef.current.contains(target)) {
         setIsGenreOpen(false)
+      }
+      if (profileBoxRef.current && !profileBoxRef.current.contains(target)) {
+        setIsProfileOpen(false)
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
@@ -289,7 +306,150 @@ export default function Navbar() {
             </div>
           )}
         </div>
+
+        {/* Top-Right Profile / Auth Button */}
+        <div ref={profileBoxRef} className="relative">
+          {isAuthenticated && user ? (
+            // Authenticated Avatar Button
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen((open) => !open)}
+              aria-expanded={isProfileOpen}
+              aria-label="User profile menu"
+              className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-1.5 pr-3 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-400"
+            >
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr ${
+                  getAvatarPreset(user.avatar).gradient
+                } text-base shadow-sm ring-1 ring-white/20`}
+              >
+                {getAvatarPreset(user.avatar).emoji}
+              </span>
+              <span className="hidden max-w-[100px] truncate sm:inline-block">
+                {user.name}
+              </span>
+              <FaChevronDown
+                className={`h-2.5 w-2.5 text-gray-400 transition-transform ${
+                  isProfileOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          ) : (
+            // Guest / Sign In Button
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen((open) => !open)}
+              aria-expanded={isProfileOpen}
+              aria-label="User account and profile menu"
+              className="flex items-center gap-2 rounded-full border border-blue-500/40 bg-blue-600/10 px-3.5 py-1.5 text-sm font-bold text-blue-300 transition hover:bg-blue-600 hover:text-white focus-visible:ring-2 focus-visible:ring-blue-400"
+            >
+              <FaUser className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Profile</span>
+              <FaChevronDown
+                className={`h-2.5 w-2.5 text-blue-400 transition-transform ${
+                  isProfileOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          )}
+
+          {/* Profile Dropdown Menu */}
+          {isProfileOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-white/10 bg-gray-900/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              {isAuthenticated && user ? (
+                <>
+                  {/* User summary */}
+                  <div className="flex items-center gap-3 border-b border-white/10 px-2 pb-3">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr ${
+                        getAvatarPreset(user.avatar).gradient
+                      } text-lg shadow-sm`}
+                    >
+                      {getAvatarPreset(user.avatar).emoji}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold text-white">{user.name}</div>
+                      <div className="truncate text-xs text-gray-400">{user.email}</div>
+                    </div>
+                  </div>
+
+                  {/* Nav Links */}
+                  <div className="mt-2 space-y-1">
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-gray-200 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <FaUser className="h-3.5 w-3.5 text-blue-400" />
+                      <span>My Profile</span>
+                    </Link>
+                    <Link
+                      to="/watchlist"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-sm text-gray-200 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <FaHeart className="h-3.5 w-3.5 text-red-400" />
+                        <span>Watchlist</span>
+                      </span>
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-gray-300">
+                        {watchlist.length}
+                      </span>
+                    </Link>
+                  </div>
+
+                  {/* Sign Out */}
+                  <div className="mt-2 border-t border-white/10 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileOpen(false)
+                        logout()
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+                    >
+                      <FaArrowRightFromBracket className="h-3.5 w-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Guest Menu */}
+                  <div className="border-b border-white/10 px-2 pb-3">
+                    <div className="text-sm font-bold text-white">Guest Mode</div>
+                    <div className="mt-0.5 text-xs text-gray-400">
+                      Sign in for personalized personas and synced profile settings.
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileOpen(false)
+                        openAuthModal('login')
+                      }}
+                      className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2 text-center text-xs font-bold text-white shadow-md shadow-blue-900/30 transition hover:brightness-110"
+                    >
+                      Sign In / Sign Up
+                    </button>
+
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium text-gray-300 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <FaUser className="h-3 w-3 text-blue-400" />
+                      <span>Guest Profile & Stats</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    <div className="ml-3 flex items-center gap-3"><AccountMenu /></div></nav>
+    </nav>
   )
 }

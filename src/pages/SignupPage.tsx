@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { validateSignup } from '../lib/validation'
@@ -31,7 +31,15 @@ export default function SignupPage() {
     }
     setSubmitting(true)
     try {
-      await signup({ email: email.trim().toLowerCase(), password, displayName: displayName.trim() || undefined })
+      const res = await signup({
+        name: displayName.trim() || undefined,
+        displayName: displayName.trim() || undefined,
+        email: email.trim().toLowerCase(),
+        password,
+      })
+      if (res && !res.success) {
+        setFormError(res.error || 'Failed to sign up')
+      }
     } catch (err) {
       const ae = toApiError(err as unknown)
       if (ae.fieldErrors?.email) setFieldErrors({ email: ae.fieldErrors.email })

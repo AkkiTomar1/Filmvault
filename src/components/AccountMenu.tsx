@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -44,7 +44,7 @@ export default function AccountMenu() {
     )
   }
 
-  const initial = (user.displayName || user.email).trim().charAt(0).toUpperCase() || 'U'
+  const initial = (user.displayName || user.name || user.email).trim().charAt(0).toUpperCase() || 'U'
 
   return (
     <div className="relative" ref={ref}>

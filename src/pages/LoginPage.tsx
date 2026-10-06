@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { validateLogin } from '../lib/validation'
@@ -32,7 +32,10 @@ export default function LoginPage() {
     }
     setSubmitting(true)
     try {
-      await login({ email: email.trim().toLowerCase(), password })
+      const res = await login({ email: email.trim().toLowerCase(), password })
+      if (res && !res.success) {
+        setFormError(res.error || 'Failed to sign in')
+      }
     } catch (err) {
       const ae = toApiError(err as unknown)
       if (ae.fieldErrors?.email) setFieldErrors({ email: ae.fieldErrors.email })

@@ -57,6 +57,30 @@ export const router = createBrowserRouter(
           errorElement: <RouteError message="We couldn't load movie night picks." />,
         },
         {
+          path: 'profile',
+          lazy: async () => {
+            const { default: Component } = await import('./pages/ProfilePage')
+            return { Component }
+          },
+          errorElement: <RouteError message="We couldn't load your profile." />,
+        },
+        {
+          path: 'login',
+          lazy: async () => {
+            const { default: Component } = await import('./pages/LoginPage')
+            return { Component }
+          },
+          errorElement: <RouteError message="We couldn't load the sign in page." />,
+        },
+        {
+          path: 'signup',
+          lazy: async () => {
+            const { default: Component } = await import('./pages/SignupPage')
+            return { Component }
+          },
+          errorElement: <RouteError message="We couldn't load the sign up page." />,
+        },
+        {
           path: '*',
           element: <Navigate to="/" replace />,
         },

@@ -53,22 +53,12 @@ export default defineConfig([
       ],
       'react-refresh/only-export-components': [
         'error',
-        { allowExportNames: ['loader', 'useWatchlistContext', 'useToast', 'useAuth'] },
+        { allowExportNames: ['loader', 'useWatchlistContext', 'useToast', 'useAuth', 'AuthContext'] },
       ],
     },
   },
   {
     files: ['*.config.js', 'vite.config.js'],
     languageOptions: { globals: { ...globals.node } },
-  },])
-
-
-
-
-
-
-
-
-
-
-
+  },
+])

@@ -1,31 +1,52 @@
-import { createApp } from './app.js'
-import { env } from './env.js'
-import { db } from './db.js'
-import { pruneExpiredTokens } from './lib/tokens.js'
+import express from 'express'
+import cors from 'cors'
+import dotenv from 'dotenv'
+import { connectDB } from './config/db.js'
+import authRoutes from './routes/authRoutes.js'
+import profileRoutes from './routes/profileRoutes.js'
+import watchlistRoutes from './routes/watchlistRoutes.js'
 
-const app = createApp()
+dotenv.config()
 
-const server = app.listen(env.PORT, () => {
-  console.info(
-    `[filmvault-api] listening on :${env.PORT} (${env.NODE_ENV}) — allowing origins: ${env.CORS_ORIGINS.join(', ')}`,
-  )
+const app = express()
+const PORT = process.env.PORT || 5000
+
+// Middlewares
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || '*',
+    credentials: true,
+  }),
+)
+app.use(express.json())
+
+// Health check endpoints
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', service: 'filmvault-api', timestamp: new Date().toISOString() })
 })
 
-// Expired refresh/verification/reset rows accumulate forever otherwise.
-const pruneTimer = setInterval(() => {
-  pruneExpiredTokens().catch((error: unknown) => {
-    console.error('[filmvault-api] token prune failed:', error)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true, timestamp: new Date().toISOString() })
+})
+
+// Routes
+app.use('/api/auth', authRoutes)
+app.use('/api/profile', profileRoutes)
+app.use('/api/watchlist', watchlistRoutes)
+
+// Connect to MongoDB & Start Server
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`[Filmvault Server] Running on http://localhost:${PORT}`)
+    })
   })
-}, 6 * 60 * 60 * 1000)
-pruneTimer.unref()
+  .catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn(`[Filmvault Server] MongoDB connection deferred (${message}), starting server on http://localhost:${PORT}`)
+    app.listen(PORT, () => {
+      console.log(`[Filmvault Server] Running on http://localhost:${PORT}`)
+    })
+  })
 
-async function shutdown(signal: string): Promise<void> {
-  console.info(`[filmvault-api] ${signal} received, shutting down.`)
-  clearInterval(pruneTimer)
-  server.close()
-  await db.$disconnect()
-  process.exit(0)
-}
-
-process.on('SIGTERM', () => void shutdown('SIGTERM'))
-process.on('SIGINT', () => void shutdown('SIGINT'))
+export default app

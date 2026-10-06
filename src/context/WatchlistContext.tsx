@@ -2,6 +2,7 @@ import { createContext, useMemo, useContext } from 'react'
 import type { ReactNode } from 'react'
 import type { Movie } from '../types/tmdb'
 import { useWatchlist } from '../hooks/useWatchlist'
+import { AuthContext } from './AuthContext'
 
 interface WatchlistContextValue {
   watchlist: Movie[]
@@ -14,7 +15,9 @@ interface WatchlistContextValue {
 const WatchlistContext = createContext<WatchlistContextValue | undefined>(undefined)
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const watchlistState = useWatchlist()
+  const auth = useContext(AuthContext)
+  const token = auth?.token ?? null
+  const watchlistState = useWatchlist(token)
 
   const value = useMemo(() => watchlistState, [watchlistState])
 
