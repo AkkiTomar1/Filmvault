@@ -25,7 +25,12 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
-  },\n  {\n    files: ['*.config.js', 'vite.config.js'],\n    languageOptions: { globals: { ...globals.node } },\n  },\n  {
+  },
+  {
+    files: ['*.config.js', 'vite.config.js'],
+    languageOptions: { globals: { ...globals.node } },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
@@ -50,7 +55,10 @@ export default defineConfig([
         'error',
         { allowExportNames: ['loader', 'useWatchlistContext', 'useToast', 'useAuth'] },
       ],
-    },\n  },\n  {\n    files: ['*.config.js', 'vite.config.js'],
+    },
+  },
+  {
+    files: ['*.config.js', 'vite.config.js'],
     languageOptions: { globals: { ...globals.node } },
   },])
 

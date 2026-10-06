@@ -1,3 +1,4 @@
+import AccountMenu from './AccountMenu'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -289,6 +290,6 @@ export default function Navbar() {
           )}
         </div>
       </div>
-    </nav>
+    <div className="ml-3 flex items-center gap-3"><AccountMenu /></div></nav>
   )
 }
