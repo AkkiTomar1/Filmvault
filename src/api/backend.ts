@@ -2,7 +2,11 @@ import axios from 'axios'
 import type { UserProfile, SignupInput, LoginInput } from '../types/auth'
 import type { Movie } from '../types/tmdb'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const rawApi =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  'https://filmvault-api-3ijb.onrender.com/api'
+const API_BASE = rawApi.endsWith('/api') ? rawApi : `${rawApi.replace(/\/$/, '')}/api`
 
 export const backendClient = axios.create({
   baseURL: API_BASE,

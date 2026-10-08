@@ -1,8 +1,11 @@
-﻿import axios, { AxiosHeaders } from 'axios'
+import axios, { AxiosHeaders } from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { getAccessToken, refreshSingleFlight, forceLogout, type ForcedLogoutReason } from './tokenManager'
 
-export const API_URL: string = import.meta.env.VITE_API_URL ?? ''
+export const API_URL: string =
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.VITE_BACKEND_URL ??
+  'https://filmvault-api-3ijb.onrender.com/api'
 export const apiEnabled = Boolean(API_URL)
 
 export const client = axios.create({
