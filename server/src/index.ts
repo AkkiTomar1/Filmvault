@@ -29,6 +29,31 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ ok: true, timestamp: new Date().toISOString() })
 })
 
+// TMDB Proxy to bypass ISP and corporate network DNS blocks
+app.all('/api/tmdb/*', async (req, res) => {
+  try {
+    const tmdbPath = req.originalUrl.replace(/^\/api\/tmdb/, '')
+    const targetUrl = new URL(`https://api.themoviedb.org/3${tmdbPath}`)
+
+    if (!targetUrl.searchParams.has('api_key')) {
+      const serverKey = process.env.TMDB_API_KEY || '386a5f00b26fb16d13fac5cf2a8f525b'
+      targetUrl.searchParams.set('api_key', serverKey)
+    }
+
+    const response = await fetch(targetUrl.toString(), {
+      method: req.method,
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+    const data = await response.json()
+    res.status(response.status).json(data)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    res.status(502).json({ error: 'TMDB proxy failure', message: msg })
+  }
+})
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/profile', profileRoutes)

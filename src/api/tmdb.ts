@@ -12,7 +12,11 @@ import type {
 } from '../types/tmdb'
 
 const API_KEY: string | undefined = import.meta.env.VITE_TMDB_API_KEY
-const BASE_URL = 'https://api.themoviedb.org/3'
+const BACKEND_URL: string | undefined =
+  import.meta.env.VITE_BACKEND_URL || 'https://filmvault-api-3ijb.onrender.com'
+const BASE_URL = BACKEND_URL
+  ? `${BACKEND_URL.replace(/\/$/, '')}/api/tmdb`
+  : 'https://api.themoviedb.org/3'
 
 if (!API_KEY) {
   console.error(

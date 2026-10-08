@@ -41,6 +41,8 @@ function cspHtmlMeta(apiUrl) {
         "'self'",
         'https://api.themoviedb.org',
         'https://api.watchmode.com',
+        'https://filmvault-api-3ijb.onrender.com',
+        'https://*.onrender.com',
         apiUrl,
       ]
         .filter(Boolean)
